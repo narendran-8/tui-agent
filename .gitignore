@@ -13,4 +13,4 @@ wheels/
 .env
 
 # other files
-./note.txt
+note.txt

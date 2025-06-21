@@ -1,7 +1,16 @@
 import os
 import re
+import dotenv
 from langchain_core.prompts import PromptTemplate
-from langchain_ollama import OllamaLLM
+from langchain_openai import ChatOpenAI
+
+# Load environment variables from .env file
+dotenv.load_dotenv()
+api_key = os.getenv("OPENROUTER_API_KEY")
+
+if not api_key:
+    print("API key not found in .env file. Please set OPENROUTER_API_KEY.")
+    exit()
 
 def get_os_choice():
     print("Choose your Operating System:")
@@ -15,14 +24,18 @@ def get_os_choice():
 def main():
     os_type = get_os_choice()
 
-    # Initialize Ollama model (using gemma3:1b as installed)
+    # Initialize LLM using OpenRouter and DeepSeek/Qwen
     try:
-        llm = OllamaLLM(model="gemma3:1b")
+        llm = ChatOpenAI(
+            base_url="https://openrouter.ai/api/v1",
+            api_key=api_key,
+            model="deepseek/deepseek-r1-0528:freey"  # or use "qwen:8b" if preferred
+        )
     except Exception as e:
-        print("❌ Error connecting to Ollama. Make sure Ollama is running and the model is available.")
+        print("❌ Error initializing OpenRouter LLM:", e)
         return
 
-    # Prompt template to convert instructions to system commands
+    # Prompt to generate system command
     prompt = PromptTemplate(
         input_variables=["os_type", "instruction"],
         template="""
@@ -37,29 +50,27 @@ Respond with only the command — no explanation, no backticks, no quotes.
 """
     )
 
-    # Modern LangChain chaining
     chain = prompt | llm
 
     while True:
-        instruction = input("\n📝 Enter instruction (or 'exit' to quit): ").strip()
+        instruction = input("\nEnter instruction (or 'exit' to quit): ").strip()
         if instruction.lower() in ["exit", "quit"]:
             break
 
         try:
             result = chain.invoke({"os_type": os_type, "instruction": instruction})
-            # Clean command (remove any accidental wrapping)
-            command = re.sub(r"[`\"']", "", result.strip())
-            print(f"\n💡 Suggested Command:\n{command}")
+            command = re.sub(r"[`\"']", "", result.content.strip())
+            print(f"\nSuggested Command:\n{command}")
         except Exception as e:
             print("❌ Failed to generate command:", e)
             continue
 
-        confirm = input("\n⚠️ Execute this command? (y/n): ").strip().lower()
+        confirm = input("\nExecute this command? (y/n): ").strip().lower()
         if confirm == "y":
             print("⏳ Running...\n")
             os.system(command)
         else:
-            print("❌ Skipped execution.")
+            print("Skipped execution.")
 
 if __name__ == "__main__":
     main()

@@ -1,1 +1,2 @@
-create  folder called "sample" in desktop location
+i want to check system information command
+ check free disk space in c: drive
